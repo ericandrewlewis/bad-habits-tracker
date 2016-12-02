@@ -134,6 +134,9 @@
             var dateString = (processingDate.getMonth() + 1) + "/" + processingDate.getDate() + "/" + processingDate.getFullYear()
             newValues.push([dateString, "no", 0, 0])
           }
+          if (newValues.length < 1) {
+            return Promise.resolve()
+          }
           return gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
             range: 'Sheet1!A2:D',
