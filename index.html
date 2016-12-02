@@ -1,0 +1,182 @@
+<html>
+  <head>
+    <script type="text/javascript">
+      // Your Client ID can be retrieved from your project in the Google
+      // Developer Console, https://console.developers.google.com
+      var CLIENT_ID = '127928232967-n9g0ce4f74cffs0r3hlm5l8b123ddibb.apps.googleusercontent.com';
+
+      var SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
+
+      /**
+       * Check if current user has authorized this application.
+       */
+      function checkAuth() {
+        gapi.auth.authorize(
+          {
+            'client_id': CLIENT_ID,
+            'scope': SCOPES.join(' '),
+            'immediate': true
+          }, handleAuthResult);
+      }
+
+      /**
+       * Handle response from authorization server.
+       *
+       * @param {Object} authResult Authorization result.
+       */
+      function handleAuthResult(authResult) {
+        var authorizeDiv = document.getElementById('authorize-div');
+        if (authResult && !authResult.error) {
+          // Hide auth UI, then load client library.
+          authorizeDiv.style.display = 'none';
+          loadSheetsApi();
+        } else {
+          // Show auth UI, allowing the user to initiate authorization by
+          // clicking authorize button.
+          authorizeDiv.style.display = 'inline';
+        }
+      }
+
+      /**
+       * Initiate auth flow in response to user clicking authorize button.
+       *
+       * @param {Event} event Button click event.
+       */
+      function handleAuthClick(event) {
+        gapi.auth.authorize(
+          {client_id: CLIENT_ID, scope: SCOPES, immediate: false},
+          handleAuthResult);
+        return false;
+      }
+
+      /**
+       * Load Sheets API client library.
+       */
+      function loadSheetsApi() {
+        var discoveryUrl =
+            'https://sheets.googleapis.com/$discovery/rest?version=v4';
+        gapi.client.load(discoveryUrl)
+          .then(fillMissingDates)
+          .then(displayTodaysData);
+      }
+
+      function displayTodaysData() {
+        return gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
+          range: 'Sheet1!A2:D',
+        }).then(function(response) {
+          var data = response.result.values[response.result.values.length - 1]
+          document.querySelector('.alcholic-drink-count').innerHTML = data[2]
+          document.querySelector('.acidic-meal-count').innerHTML = data[3]
+          document.querySelector('.used-the-cream').innerHTML = data[1]
+        })
+      }
+
+      function increaseValueInTodaysRow(columnIndex) {
+        return gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
+          range: 'Sheet1!A2:D',
+        }).then(function(response) {
+          var rowIndex = 1 + response.result.values.length
+          return gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
+            range: 'Sheet1!' + String.fromCharCode(65 + columnIndex) + rowIndex,
+            valueInputOption: 'USER_ENTERED',
+            values: [[parseInt(response.result.values[response.result.values.length-1][columnIndex]) + 1]]
+          })
+        })
+      }
+
+      function increaseTodaysDrinkCount() {
+        return increaseValueInTodaysRow(2)
+          .then(displayTodaysData)
+      }
+
+      function increaseTodaysBadMealCount() {
+        return increaseValueInTodaysRow(3)
+          .then(displayTodaysData)
+      }
+
+      function usedTheCreamUpdater() {
+        return gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
+          range: 'Sheet1!A2:D',
+        }).then(function(response) {
+          var rowIndex = 1 + response.result.values.length
+          return gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
+            range: 'Sheet1!B' + rowIndex,
+            valueInputOption: 'USER_ENTERED',
+            values: [['yes']]
+          })
+        }).then(displayTodaysData)
+
+      }
+
+      window.addEventListener('load', function() {
+        document.querySelector('.drank-a-drink').addEventListener('click', increaseTodaysDrinkCount)
+        document.querySelector('.ate-an-acidic-meal-button').addEventListener('click', increaseTodaysBadMealCount)
+        document.querySelector('.used-the-cream-button').addEventListener('click', usedTheCreamUpdater)
+      })
+
+      function fillMissingDates() {
+        return gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
+          range: 'Sheet1!A2:D',
+        }).then(function(response) {
+          var processingDate = new Date(
+            response.result.values[response.result.values.length - 1][0]
+          )
+          var todaysDate = new Date()
+          processingDate.setDate(processingDate.getDate() + 1)
+          var newValues = []
+          while (processingDate.toDateString() !== todaysDate.toDateString()) {
+            var dateString = (processingDate.getMonth() + 1) + "/" + processingDate.getDate() + "/" + processingDate.getFullYear()
+            newValues.push([dateString, "no", 0, 0])
+            processingDate.setDate(processingDate.getDate() + 1)
+          }
+          return gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
+            range: 'Sheet1!A2:D',
+            insertDataOption: 'INSERT_ROWS',
+            valueInputOption: 'USER_ENTERED',
+            values: newValues
+          })
+        }, function(response) {
+          appendPre('Error: ' + response.result.error.message);
+        });
+      }
+
+      /**
+       * Append a pre element to the body containing the given message
+       * as its text node.
+       *
+       * @param {string} message Text to be placed in pre element.
+       */
+      function appendPre(message) {
+        var pre = document.getElementById('output');
+        var textContent = document.createTextNode(message + '\n');
+        pre.appendChild(textContent);
+      }
+    </script>
+    <script src="https://apis.google.com/js/client.js?onload=checkAuth"></script>
+  </head>
+  <body>
+    <h1>Today you</h1>
+    <p>drank <span class="alcholic-drink-count">x</span> drinks</p>
+    <p><button class="drank-a-drink">drink</button></p>
+    <p>ate <span class="acidic-meal-count">x</span> acidic meals</p>
+    <p><button class="ate-an-acidic-meal-button">ate</button></p>
+    <p><span class="used-the-cream">maybe</span> used the cream</p>
+    <p><button class="used-the-cream-button">used</button></p>
+    <div id="authorize-div" style="display: none">
+      <span>Authorize access to Google Sheets API</span>
+      <!--Button for the user to click to initiate auth sequence -->
+      <button id="authorize-button" onclick="handleAuthClick(event)">
+        Authorize
+      </button>
+    </div>
+    <pre id="output"></pre>
+
+  </body>
+</html>
