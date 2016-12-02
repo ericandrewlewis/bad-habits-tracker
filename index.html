@@ -128,12 +128,11 @@
             response.result.values[response.result.values.length - 1][0]
           )
           var todaysDate = new Date()
-          processingDate.setDate(processingDate.getDate() + 1)
           var newValues = []
           while (processingDate.toDateString() !== todaysDate.toDateString()) {
+            processingDate.setDate(processingDate.getDate() + 1)
             var dateString = (processingDate.getMonth() + 1) + "/" + processingDate.getDate() + "/" + processingDate.getFullYear()
             newValues.push([dateString, "no", 0, 0])
-            processingDate.setDate(processingDate.getDate() + 1)
           }
           return gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: '1klZFbyH7-ei5Ge9MWIthUq-g1jEQ_QjoqXYfdy7l-hQ',
